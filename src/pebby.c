@@ -4,7 +4,9 @@ static Window *window;
 
 // Texts
 
-static TextLayer *text_layer;
+static TextLayer *bottleTextLayer;
+static TextLayer *diaperTextLayer;
+static TextLayer *moonTextLayer;
 
 // Bitmaps
 
@@ -21,16 +23,25 @@ static void window_load(Window *window) {
 	Layer *window_layer = window_get_root_layer(window);
 	GRect bounds = layer_get_bounds(window_layer);
 
-	// We do this to account for the offset due to the status bar
-	// at the top of the app window.
-	GRect layer_frame_description = layer_get_frame(window_layer);
-	layer_frame_description.origin.x = 0;
-	layer_frame_description.origin.y = 0;
-
 	// Text layers
-	text_layer = text_layer_create(layer_frame_description);
-	text_layer_set_text(text_layer, "");
-	layer_add_child(window_layer, text_layer_get_layer(text_layer));
+	
+	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 16 }, .size = {100, 24} });
+	text_layer_set_text_alignment(bottleTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(bottleTextLayer, "06:35");
+	text_layer_set_font(bottleTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(bottleTextLayer));
+	
+	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 16 }, .size = {100, 24} });
+	text_layer_set_font(diaperTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(diaperTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(diaperTextLayer, "05:35");
+	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
+	
+	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 16 }, .size = {100, 24} });
+	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(moonTextLayer, "05:32 - ...");
+	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
 
 	
 	// Image layers
@@ -41,7 +52,6 @@ static void window_load(Window *window) {
 
 	const GPoint center = grect_center_point(&bounds);
 	GRect image_frame = (GRect) { .origin = center, .size = bottleBlackImage->bounds.size };
-
 
 	image_frame.size = bottleBlackImage->bounds.size;
 	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
@@ -69,7 +79,9 @@ static void window_load(Window *window) {
 }
 
 static void window_unload(Window *window) {
-	text_layer_destroy(text_layer);
+	text_layer_destroy(bottleTextLayer);
+	text_layer_destroy(diaperTextLayer);
+	text_layer_destroy(moonTextLayer);
 	
 	bitmap_layer_destroy(bottleBlacklayer);
 	bitmap_layer_destroy(diaperBlacklayer);
@@ -78,7 +90,6 @@ static void window_unload(Window *window) {
 	gbitmap_destroy(bottleBlackImage);
 	gbitmap_destroy(diaperBlackImage);
 	gbitmap_destroy(moonBlackImage);
-
 }
 
 static void init(void) {
