@@ -1,4 +1,5 @@
 #include "pebble.h"
+#include <time.h>
 
 static Window *window;
 
@@ -27,20 +28,20 @@ static void window_load(Window *window) {
 	
 	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 16 }, .size = {100, 24} });
 	text_layer_set_text_alignment(bottleTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(bottleTextLayer, "06:35");
+	text_layer_set_text(bottleTextLayer, "");
 	text_layer_set_font(bottleTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(bottleTextLayer));
 	
 	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 16 }, .size = {100, 24} });
 	text_layer_set_font(diaperTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(diaperTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(diaperTextLayer, "05:35");
+	text_layer_set_text(diaperTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
 	
 	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 16 }, .size = {100, 24} });
 	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(moonTextLayer, "05:32 - ...");
+	text_layer_set_text(moonTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
 
 	
@@ -92,12 +93,47 @@ static void window_unload(Window *window) {
 	gbitmap_destroy(moonBlackImage);
 }
 
+
+void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+	//Window *window = (Window *)context;
+	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Up");
+	
+	static char timeTextUp[] = "00:00";	// Used by the system later
+	static char timeTextMiddle[] = "00:00";	// Used by the system later
+	
+	ButtonId bt = click_recognizer_get_button_id(recognizer);
+	char *targetText = timeTextUp;
+	TextLayer *targetLayer = bottleTextLayer; 
+	
+	if (bt == BUTTON_ID_SELECT) {
+		targetText = timeTextMiddle;
+		targetLayer = diaperTextLayer;
+	}
+	
+	time_t t = time(NULL);
+	struct tm *currentTime = localtime(&t);
+	
+	if (clock_is_24h_style()) {
+		strftime(targetText, sizeof(timeTextUp), "%H:%M", currentTime);
+	} else {
+		strftime(targetText, sizeof(timeTextUp), "%I:%M", currentTime);
+	}
+	
+	text_layer_set_text(targetLayer, targetText);
+}
+
+void config_provider(Window *window) {
+	window_single_click_subscribe(BUTTON_ID_UP, up_single_click_handler);
+	window_single_click_subscribe(BUTTON_ID_SELECT, up_single_click_handler);
+}
+
 static void init(void) {
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
 		.load = window_load,
 		.unload = window_unload
 	});
+	window_set_click_config_provider(window, (ClickConfigProvider) config_provider);
 	window_stack_push(window, true /* Animated */);
 }
 
