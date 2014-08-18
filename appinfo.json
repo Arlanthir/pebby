@@ -1,0 +1,41 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "mig.jcb@gmail.com",
+    "longName": "Pebby",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/icon.png",
+                "menuIcon": true,
+                "name": "IMAGE_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/moon.png",
+                "name": "IMAGE_MOON",
+                "type": "png-trans"
+            },
+            {
+                "file": "images/diaper.png",
+                "name": "IMAGE_DIAPER",
+                "type": "png-trans"
+            },
+            {
+                "file": "images/bottle.png",
+                "name": "IMAGE_BOTTLE",
+                "type": "png-trans"
+            }
+        ]
+    },
+    "shortName": "Pebby",
+    "uuid": "2a2e6d45-7240-4706-933a-3b521cf17490",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}
