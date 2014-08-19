@@ -1,13 +1,26 @@
 #include "pebble.h"
+#include <string.h>
 #include <time.h>
 
+// Persist Keys
+#define PERSIST_BOTTLE 1
+#define PERSIST_DIAPER 2
+#define PERSIST_MOON_START 3
+#define PERSIST_MOON_END 4
+
+	
 static Window *window;
 
 // Texts
 
 static TextLayer *bottleTextLayer;
+static char timeTextUp[] = "00:00";	// Used by the system later
+
 static TextLayer *diaperTextLayer;
+static char timeTextMiddle[] = "00:00";	// Used by the system later
+
 static TextLayer *moonTextLayer;
+static char timeTextDown[14] = "";	// Used by the system later
 
 // Bitmaps
 
@@ -18,6 +31,41 @@ static GBitmap *moonBlackImage;
 static BitmapLayer *bottleBlacklayer;
 static BitmapLayer *diaperBlacklayer;
 static BitmapLayer *moonBlacklayer;
+
+static int sleeping = 0;
+static time_t sleepStart;
+
+
+
+static void setTimeText(time_t timestamp, char *text, TextLayer *textLayer) {
+	struct tm *time = localtime(&timestamp);
+	strftime(text, sizeof(timeTextUp), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	text_layer_set_text(textLayer, text);
+}
+
+
+static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *text, TextLayer *textLayer) {
+	char sleepStartStr[] = "00:00";
+	char sleepEndStr[] = "00:00";
+	
+	struct tm *time = localtime(&startTimestamp);
+		
+	strftime(sleepStartStr, sizeof(sleepStartStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+
+	
+	if (endTimestamp != 0) {
+		time = localtime(&endTimestamp);
+		strftime(sleepEndStr, sizeof(sleepEndStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	} else {
+		strcpy(sleepEndStr, "...");
+	}
+	
+	strncpy(text, sleepStartStr, sizeof(sleepStartStr));
+	strncat(text, " - ", 4);
+	strncat(text, sleepEndStr, sizeof(sleepEndStr));
+	
+	text_layer_set_text(textLayer, text);
+}
 
 
 static void window_load(Window *window) {
@@ -38,12 +86,34 @@ static void window_load(Window *window) {
 	text_layer_set_text(diaperTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
 	
-	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 16 }, .size = {100, 24} });
+	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 16 }, .size = {105, 24} });
 	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
 	text_layer_set_text(moonTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
+	
+	// Time values initialization
+	if (persist_exists(PERSIST_BOTTLE)) {
+		time_t t = persist_read_int(PERSIST_BOTTLE);
+		setTimeText(t, timeTextUp, bottleTextLayer);
+	}
+	
+	if (persist_exists(PERSIST_DIAPER)) {
+		time_t t = persist_read_int(PERSIST_DIAPER);
+		setTimeText(t, timeTextMiddle, diaperTextLayer);
+	}
+	
+	if (persist_exists(PERSIST_MOON_START)) {
+		sleepStart = persist_read_int(PERSIST_MOON_START);
+		
+		time_t t = persist_exists(PERSIST_MOON_END)? persist_read_int(PERSIST_MOON_END) : 0;
 
+		if (t == 0) {
+			sleeping = 1;
+		}
+		
+		setTimeRangeText(sleepStart, t, timeTextDown, moonTextLayer);
+	}
 	
 	// Image layers
 	
@@ -97,34 +167,48 @@ static void window_unload(Window *window) {
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
 	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Up");
-	
-	static char timeTextUp[] = "00:00";	// Used by the system later
-	static char timeTextMiddle[] = "00:00";	// Used by the system later
-	
+
 	ButtonId bt = click_recognizer_get_button_id(recognizer);
 	char *targetText = timeTextUp;
-	TextLayer *targetLayer = bottleTextLayer; 
+	TextLayer *targetLayer = bottleTextLayer;
+	int persistKey = PERSIST_BOTTLE;
 	
 	if (bt == BUTTON_ID_SELECT) {
 		targetText = timeTextMiddle;
 		targetLayer = diaperTextLayer;
+		persistKey = PERSIST_DIAPER;
 	}
 	
 	time_t t = time(NULL);
-	struct tm *currentTime = localtime(&t);
+	persist_write_int(persistKey, t);
 	
-	if (clock_is_24h_style()) {
-		strftime(targetText, sizeof(timeTextUp), "%H:%M", currentTime);
+	setTimeText(t, targetText, targetLayer);
+}
+
+void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
+	//Window *window = (Window *)context;
+	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Down");
+	
+	time_t sleepEnd = 0;
+	
+	if (sleeping) {
+		sleepEnd = time(NULL);
+		persist_write_int(PERSIST_MOON_END, sleepEnd);
+		sleeping = 0;
 	} else {
-		strftime(targetText, sizeof(timeTextUp), "%I:%M", currentTime);
+		sleepStart = time(NULL);
+		persist_write_int(PERSIST_MOON_START, sleepStart);
+		persist_write_int(PERSIST_MOON_END, 0);
+		sleeping = 1;
 	}
 	
-	text_layer_set_text(targetLayer, targetText);
+	setTimeRangeText(sleepStart, sleepEnd, timeTextDown, moonTextLayer);
 }
 
 void config_provider(Window *window) {
 	window_single_click_subscribe(BUTTON_ID_UP, up_single_click_handler);
 	window_single_click_subscribe(BUTTON_ID_SELECT, up_single_click_handler);
+	window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
 }
 
 static void init(void) {
