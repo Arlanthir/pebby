@@ -2,13 +2,15 @@
 #include <string.h>
 #include <time.h>
 
-// Persist Keys
+/***** Persist Keys *****/
 #define PERSIST_BOTTLE 1
 #define PERSIST_DIAPER 2
 #define PERSIST_MOON_START 3
 #define PERSIST_MOON_END 4
 
-	
+
+/***** Variables *****/	
+
 static Window *window;
 
 // Texts
@@ -32,10 +34,21 @@ static BitmapLayer *bottleBlacklayer;
 static BitmapLayer *diaperBlacklayer;
 static BitmapLayer *moonBlacklayer;
 
+// Action Bar
+
+static GBitmap *actionBottle;
+static GBitmap *actionDiaper;
+static GBitmap *actionMoon;
+
+static ActionBarLayer *actionBar;
+
+// Data
+
 static int sleeping = 0;
 static time_t sleepStart;
 
 
+/***** Util *****/
 
 static void setTimeText(time_t timestamp, char *text, TextLayer *textLayer) {
 	struct tm *time = localtime(&timestamp);
@@ -68,101 +81,7 @@ static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *t
 }
 
 
-static void window_load(Window *window) {
-	Layer *window_layer = window_get_root_layer(window);
-	GRect bounds = layer_get_bounds(window_layer);
-
-	// Text layers
-	
-	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 16 }, .size = {100, 24} });
-	text_layer_set_text_alignment(bottleTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(bottleTextLayer, "");
-	text_layer_set_font(bottleTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	layer_add_child(window_layer, text_layer_get_layer(bottleTextLayer));
-	
-	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 16 }, .size = {100, 24} });
-	text_layer_set_font(diaperTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	text_layer_set_text_alignment(diaperTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(diaperTextLayer, "");
-	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
-	
-	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 16 }, .size = {105, 24} });
-	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
-	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
-	text_layer_set_text(moonTextLayer, "");
-	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
-	
-	// Time values initialization
-	if (persist_exists(PERSIST_BOTTLE)) {
-		time_t t = persist_read_int(PERSIST_BOTTLE);
-		setTimeText(t, timeTextUp, bottleTextLayer);
-	}
-	
-	if (persist_exists(PERSIST_DIAPER)) {
-		time_t t = persist_read_int(PERSIST_DIAPER);
-		setTimeText(t, timeTextMiddle, diaperTextLayer);
-	}
-	
-	if (persist_exists(PERSIST_MOON_START)) {
-		sleepStart = persist_read_int(PERSIST_MOON_START);
-		
-		time_t t = persist_exists(PERSIST_MOON_END)? persist_read_int(PERSIST_MOON_END) : 0;
-
-		if (t == 0) {
-			sleeping = 1;
-		}
-		
-		setTimeRangeText(sleepStart, t, timeTextDown, moonTextLayer);
-	}
-	
-	// Image layers
-	
-	bottleBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BOTTLE_BLACK);
-	diaperBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DIAPER_BLACK);
-	moonBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MOON_BLACK);
-
-	const GPoint center = grect_center_point(&bounds);
-	GRect image_frame = (GRect) { .origin = center, .size = bottleBlackImage->bounds.size };
-
-	image_frame.size = bottleBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = bounds.size.h/3/2 - image_frame.size.h/2;
-	bottleBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(bottleBlacklayer, bottleBlackImage);
-	bitmap_layer_set_compositing_mode(bottleBlacklayer, GCompOpClear);
-	layer_add_child(window_layer, bitmap_layer_get_layer(bottleBlacklayer));
-	
-	image_frame.size = diaperBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = center.y - image_frame.size.h/2;
-	diaperBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(diaperBlacklayer, diaperBlackImage);
-	bitmap_layer_set_compositing_mode(diaperBlacklayer, GCompOpClear);
-	layer_add_child(window_layer, bitmap_layer_get_layer(diaperBlacklayer));
-	
-	image_frame.size = moonBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = 5*bounds.size.h/3/2 - image_frame.size.h/2;
-	moonBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(moonBlacklayer, moonBlackImage);
-	bitmap_layer_set_compositing_mode(moonBlacklayer, GCompOpClear);
-	layer_add_child(window_layer, bitmap_layer_get_layer(moonBlacklayer));
-}
-
-static void window_unload(Window *window) {
-	text_layer_destroy(bottleTextLayer);
-	text_layer_destroy(diaperTextLayer);
-	text_layer_destroy(moonTextLayer);
-	
-	bitmap_layer_destroy(bottleBlacklayer);
-	bitmap_layer_destroy(diaperBlacklayer);
-	bitmap_layer_destroy(moonBlacklayer);
-
-	gbitmap_destroy(bottleBlackImage);
-	gbitmap_destroy(diaperBlackImage);
-	gbitmap_destroy(moonBlackImage);
-}
-
+/***** Click Provider *****/
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
@@ -210,6 +129,131 @@ void config_provider(Window *window) {
 	window_single_click_subscribe(BUTTON_ID_SELECT, up_single_click_handler);
 	window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
 }
+
+
+/***** App *****/
+
+static void window_load(Window *window) {
+	Layer *window_layer = window_get_root_layer(window);
+	GRect bounds = layer_get_bounds(window_layer);
+	bounds.size.h -= 6;
+
+	// Text layers
+	
+	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_text_alignment(bottleTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(bottleTextLayer, "");
+	text_layer_set_font(bottleTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(bottleTextLayer));
+	
+	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_font(diaperTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(diaperTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(diaperTextLayer, "");
+	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
+	
+	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(moonTextLayer, "");
+	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
+	
+	// Time values initialization
+	if (persist_exists(PERSIST_BOTTLE)) {
+		time_t t = persist_read_int(PERSIST_BOTTLE);
+		setTimeText(t, timeTextUp, bottleTextLayer);
+	}
+	
+	if (persist_exists(PERSIST_DIAPER)) {
+		time_t t = persist_read_int(PERSIST_DIAPER);
+		setTimeText(t, timeTextMiddle, diaperTextLayer);
+	}
+	
+	if (persist_exists(PERSIST_MOON_START)) {
+		sleepStart = persist_read_int(PERSIST_MOON_START);
+		
+		time_t t = persist_exists(PERSIST_MOON_END)? persist_read_int(PERSIST_MOON_END) : 0;
+
+		if (t == 0) {
+			sleeping = 1;
+		}
+		
+		setTimeRangeText(sleepStart, t, timeTextDown, moonTextLayer);
+	}
+	
+	// Image layers
+	
+	bottleBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BOTTLE_BLACK);
+	diaperBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DIAPER_BLACK);
+	moonBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MOON_BLACK);
+
+	const GPoint center = grect_center_point(&bounds);
+	GRect image_frame = (GRect) { .origin = center, .size = bottleBlackImage->bounds.size };
+
+	image_frame.size = bottleBlackImage->bounds.size;
+	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
+	image_frame.origin.y = bounds.size.h/3/2 - image_frame.size.h/2;
+	bottleBlacklayer = bitmap_layer_create(image_frame);
+	bitmap_layer_set_bitmap(bottleBlacklayer, bottleBlackImage);
+	bitmap_layer_set_compositing_mode(bottleBlacklayer, GCompOpClear);
+	//layer_add_child(window_layer, bitmap_layer_get_layer(bottleBlacklayer));
+	
+	image_frame.size = diaperBlackImage->bounds.size;
+	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
+	image_frame.origin.y = center.y - image_frame.size.h/2;
+	diaperBlacklayer = bitmap_layer_create(image_frame);
+	bitmap_layer_set_bitmap(diaperBlacklayer, diaperBlackImage);
+	bitmap_layer_set_compositing_mode(diaperBlacklayer, GCompOpClear);
+	//layer_add_child(window_layer, bitmap_layer_get_layer(diaperBlacklayer));
+	
+	image_frame.size = moonBlackImage->bounds.size;
+	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
+	image_frame.origin.y = 5*bounds.size.h/3/2 - image_frame.size.h/2;
+	moonBlacklayer = bitmap_layer_create(image_frame);
+	bitmap_layer_set_bitmap(moonBlacklayer, moonBlackImage);
+	bitmap_layer_set_compositing_mode(moonBlacklayer, GCompOpClear);
+	//layer_add_child(window_layer, bitmap_layer_get_layer(moonBlacklayer));
+	
+	// Action Bar
+	
+	// Initialize the action bar:
+	actionBar = action_bar_layer_create();
+	// Associate the action bar with the window:
+	action_bar_layer_add_to_window(actionBar, window);
+	// Set the click config provider:
+	action_bar_layer_set_click_config_provider(actionBar, (ClickConfigProvider) config_provider);
+	
+	// Set the icons:
+	
+	actionBottle = gbitmap_create_with_resource(RESOURCE_ID_ACTION_BOTTLE);
+	actionDiaper = gbitmap_create_with_resource(RESOURCE_ID_ACTION_DIAPER);
+	actionMoon = gbitmap_create_with_resource(RESOURCE_ID_ACTION_MOON);
+	
+	action_bar_layer_set_icon(actionBar, BUTTON_ID_UP, actionBottle);
+	action_bar_layer_set_icon(actionBar, BUTTON_ID_SELECT, actionDiaper);
+	action_bar_layer_set_icon(actionBar, BUTTON_ID_DOWN, actionMoon);
+}
+
+static void window_unload(Window *window) {
+	text_layer_destroy(bottleTextLayer);
+	text_layer_destroy(diaperTextLayer);
+	text_layer_destroy(moonTextLayer);
+	
+	bitmap_layer_destroy(bottleBlacklayer);
+	bitmap_layer_destroy(diaperBlacklayer);
+	bitmap_layer_destroy(moonBlacklayer);
+
+	gbitmap_destroy(bottleBlackImage);
+	gbitmap_destroy(diaperBlackImage);
+	gbitmap_destroy(moonBlackImage);
+	
+	action_bar_layer_destroy(actionBar);
+
+	gbitmap_destroy(actionBottle);
+	gbitmap_destroy(actionDiaper);
+	gbitmap_destroy(actionMoon);
+}
+
 
 static void init(void) {
 	window = window_create();
