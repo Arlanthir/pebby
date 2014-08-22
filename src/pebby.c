@@ -83,6 +83,15 @@ static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *t
 
 /***** Click Provider *****/
 
+void sendToPhone(int key, time_t message) {
+	// Send value to phone
+	DictionaryIterator *iter;
+	app_message_outbox_begin(&iter);
+	Tuplet value = TupletInteger(key, message);
+	dict_write_tuplet(iter, &value);
+	app_message_outbox_send();
+}
+
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
 	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Up");
@@ -100,6 +109,7 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	
 	time_t t = time(NULL);
 	persist_write_int(persistKey, t);
+	sendToPhone(persistKey, t);
 	
 	setTimeText(t, targetText, targetLayer);
 }
@@ -113,10 +123,12 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if (sleeping) {
 		sleepEnd = time(NULL);
 		persist_write_int(PERSIST_MOON_END, sleepEnd);
+		sendToPhone(PERSIST_MOON_END, sleepEnd);
 		sleeping = 0;
 	} else {
 		sleepStart = time(NULL);
 		persist_write_int(PERSIST_MOON_START, sleepStart);
+		sendToPhone(PERSIST_MOON_START, sleepStart);
 		persist_write_int(PERSIST_MOON_END, 0);
 		sleeping = 1;
 	}
@@ -129,6 +141,33 @@ void config_provider(Window *window) {
 	window_single_click_subscribe(BUTTON_ID_SELECT, up_single_click_handler);
 	window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
 }
+
+
+/***** Watch-phone communication *****/
+
+void out_sent_handler(DictionaryIterator *sent, void *context) {
+	// Outgoing message was delivered
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 145, "Pebble: Out message delivered");
+}
+
+
+void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
+	// Outgoing message failed
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 151, "Pebble: Out message failed");
+}
+
+
+void in_received_handler(DictionaryIterator *received, void *context) {
+	// Incoming message received
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 157, "Pebble: In message received");
+}
+
+
+void in_dropped_handler(AppMessageResult reason, void *context) {
+	// Incoming message dropped
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 163, "Pebble: In message failed");
+}
+
 
 
 /***** App *****/
@@ -262,6 +301,18 @@ static void init(void) {
 		.unload = window_unload
 	});
 	window_set_click_config_provider(window, (ClickConfigProvider) config_provider);
+	
+	// Watch-phone communication
+	
+	app_message_register_inbox_received(in_received_handler);
+	app_message_register_inbox_dropped(in_dropped_handler);
+	app_message_register_outbox_sent(out_sent_handler);
+	app_message_register_outbox_failed(out_failed_handler);
+	
+	const uint32_t inbound_size = 64;
+	const uint32_t outbound_size = 64;
+	app_message_open(inbound_size, outbound_size);
+	
 	window_stack_push(window, true /* Animated */);
 }
 
