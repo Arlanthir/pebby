@@ -24,16 +24,6 @@ static char timeTextMiddle[] = "00:00";	// Used by the system later
 static TextLayer *moonTextLayer;
 static char timeTextDown[14] = "";	// Used by the system later
 
-// Bitmaps
-
-static GBitmap *bottleBlackImage;
-static GBitmap *diaperBlackImage;
-static GBitmap *moonBlackImage;
-
-static BitmapLayer *bottleBlacklayer;
-static BitmapLayer *diaperBlacklayer;
-static BitmapLayer *moonBlacklayer;
-
 // Action Bar
 
 static GBitmap *actionBottle;
@@ -51,8 +41,12 @@ static time_t sleepStart;
 /***** Util *****/
 
 static void setTimeText(time_t timestamp, char *text, TextLayer *textLayer) {
-	struct tm *time = localtime(&timestamp);
-	strftime(text, sizeof(timeTextUp), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	if (timestamp == 0) {
+		text[0] = '\0';
+	} else {
+		struct tm *time = localtime(&timestamp);
+		strftime(text, sizeof(timeTextUp), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	}
 	text_layer_set_text(textLayer, text);
 }
 
@@ -160,6 +154,28 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 void in_received_handler(DictionaryIterator *received, void *context) {
 	// Incoming message received
 	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 157, "Pebble: In message received");
+	
+	// Check for fields you expect to receive
+	Tuple *text_tuple = dict_find(received, 0);
+	
+	// Act on the found fields received
+	if (text_tuple) {
+		app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 169, "Received message: %s", text_tuple->value->cstring);
+		if (strcmp(text_tuple->value->cstring, "reset") == 0) {
+			persist_write_int(PERSIST_BOTTLE, 0);
+			persist_write_int(PERSIST_DIAPER, 0);
+			persist_write_int(PERSIST_MOON_START, 0);
+			persist_write_int(PERSIST_MOON_END, 0);
+			
+			timeTextUp[0] = '\0';
+			timeTextMiddle[0] = '\0';
+			timeTextDown[0] = '\0';
+			
+			text_layer_set_text(bottleTextLayer, timeTextUp);
+			text_layer_set_text(diaperTextLayer, timeTextMiddle);
+			text_layer_set_text(moonTextLayer, timeTextDown);
+		}
+	}
 }
 
 
@@ -220,39 +236,6 @@ static void window_load(Window *window) {
 		setTimeRangeText(sleepStart, t, timeTextDown, moonTextLayer);
 	}
 	
-	// Image layers
-	
-	bottleBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_BOTTLE_BLACK);
-	diaperBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DIAPER_BLACK);
-	moonBlackImage = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_MOON_BLACK);
-
-	const GPoint center = grect_center_point(&bounds);
-	GRect image_frame = (GRect) { .origin = center, .size = bottleBlackImage->bounds.size };
-
-	image_frame.size = bottleBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = bounds.size.h/3/2 - image_frame.size.h/2;
-	bottleBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(bottleBlacklayer, bottleBlackImage);
-	bitmap_layer_set_compositing_mode(bottleBlacklayer, GCompOpClear);
-	//layer_add_child(window_layer, bitmap_layer_get_layer(bottleBlacklayer));
-	
-	image_frame.size = diaperBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = center.y - image_frame.size.h/2;
-	diaperBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(diaperBlacklayer, diaperBlackImage);
-	bitmap_layer_set_compositing_mode(diaperBlacklayer, GCompOpClear);
-	//layer_add_child(window_layer, bitmap_layer_get_layer(diaperBlacklayer));
-	
-	image_frame.size = moonBlackImage->bounds.size;
-	image_frame.origin.x = bounds.size.w - image_frame.size.w - 5;
-	image_frame.origin.y = 5*bounds.size.h/3/2 - image_frame.size.h/2;
-	moonBlacklayer = bitmap_layer_create(image_frame);
-	bitmap_layer_set_bitmap(moonBlacklayer, moonBlackImage);
-	bitmap_layer_set_compositing_mode(moonBlacklayer, GCompOpClear);
-	//layer_add_child(window_layer, bitmap_layer_get_layer(moonBlacklayer));
-	
 	// Action Bar
 	
 	// Initialize the action bar:
@@ -277,14 +260,6 @@ static void window_unload(Window *window) {
 	text_layer_destroy(bottleTextLayer);
 	text_layer_destroy(diaperTextLayer);
 	text_layer_destroy(moonTextLayer);
-	
-	bitmap_layer_destroy(bottleBlacklayer);
-	bitmap_layer_destroy(diaperBlacklayer);
-	bitmap_layer_destroy(moonBlacklayer);
-
-	gbitmap_destroy(bottleBlackImage);
-	gbitmap_destroy(diaperBlackImage);
-	gbitmap_destroy(moonBlackImage);
 	
 	action_bar_layer_destroy(actionBar);
 

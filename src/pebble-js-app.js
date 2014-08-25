@@ -51,3 +51,22 @@ Pebble.addEventListener("appmessage",
 	}
 );
 
+Pebble.addEventListener("showConfiguration",
+	function(e) {
+		Pebble.openURL("http://www.epicvortex.com/pebble/pebby.html?#" + JSON.stringify(localStorage));
+	}
+);
+
+Pebble.addEventListener("webviewclosed",
+	function(e) {
+		console.log("Configuration window returned: " + e.response);
+		if (e.response == "reset") {
+			console.log("Local Storage cleared");
+			localStorage.clear();
+			Pebble.sendAppMessage({"0": "reset" });
+		}
+	}
+);
+
+
+
