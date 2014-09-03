@@ -1,7 +1,12 @@
 #include "pebble.h"
+#include <math.h>
 #include <string.h>
 #include <time.h>
 
+/***** Useful Macros *****/
+	
+#define MAX(a, b) (( a > b)? a : b)
+	
 /***** Persist Keys *****/
 #define PERSIST_BOTTLE 1
 #define PERSIST_DIAPER 2
@@ -17,12 +22,18 @@ static Window *window;
 
 static TextLayer *bottleTextLayer;
 static char timeTextUp[] = "00:00";	// Used by the system later
+static TextLayer *bottleSinceTextLayer;
+static char timeSinceTextUp[] = "(99 minutes ago)";	// Used by the system later
 
 static TextLayer *diaperTextLayer;
 static char timeTextMiddle[] = "00:00";	// Used by the system later
+static TextLayer *diaperSinceTextLayer;
+static char timeSinceTextMiddle[] = "(99 minutes ago)";	// Used by the system later
 
 static TextLayer *moonTextLayer;
 static char timeTextDown[14] = "";	// Used by the system later
+static TextLayer *moonSinceTextLayer;
+static char timeSinceTextDown[] = "(99 minutes ago)";	// Used by the system later
 
 // Action Bar
 
@@ -35,7 +46,10 @@ static ActionBarLayer *actionBar;
 // Data
 
 static int sleeping = 0;
-static time_t sleepStart;
+static time_t bottleStart = 0;
+static time_t diaperStart = 0;
+static time_t sleepStart = 0;
+static time_t sleepEnd = 0;
 
 
 /***** Util *****/
@@ -50,26 +64,48 @@ static void setTimeText(time_t timestamp, char *text, TextLayer *textLayer) {
 	text_layer_set_text(textLayer, text);
 }
 
+static void setTimeSinceText(time_t timestamp, char *text, TextLayer *textLayer) {
+	time_t now = time(NULL);
+	time_t elapsed = now - timestamp;
+	
+	if (elapsed < 60) {
+		strcpy(text, "(just now)");
+	} else if (elapsed < 3600) {
+		int minutes = ceil((double) elapsed / 60);
+		snprintf(text, sizeof(timeSinceTextUp), "(%d min ago)", minutes);
+	} else {
+		int hours = elapsed / 3600;
+		snprintf(text, sizeof(timeSinceTextUp), "(%d h ago)", hours);
+	}
+	
+	// strftime(text, sizeof(timeTextUp), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	text_layer_set_text(textLayer, text);
+}
+
 
 static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *text, TextLayer *textLayer) {
 	char sleepStartStr[] = "00:00";
 	char sleepEndStr[] = "00:00";
 	
-	struct tm *time = localtime(&startTimestamp);
-		
-	strftime(sleepStartStr, sizeof(sleepStartStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
-
-	
-	if (endTimestamp != 0) {
-		time = localtime(&endTimestamp);
-		strftime(sleepEndStr, sizeof(sleepEndStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+	if (startTimestamp == 0 && endTimestamp == 0) {
+		text[0] = '\0';
 	} else {
-		strcpy(sleepEndStr, "...");
+		struct tm *time = localtime(&startTimestamp);
+
+		strftime(sleepStartStr, sizeof(sleepStartStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+
+
+		if (endTimestamp != 0) {
+			time = localtime(&endTimestamp);
+			strftime(sleepEndStr, sizeof(sleepEndStr), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
+		} else {
+			strcpy(sleepEndStr, "...");
+		}
+
+		strncpy(text, sleepStartStr, sizeof(sleepStartStr));
+		strncat(text, " - ", 4);
+		strncat(text, sleepEndStr, sizeof(sleepEndStr));
 	}
-	
-	strncpy(text, sleepStartStr, sizeof(sleepStartStr));
-	strncat(text, " - ", 4);
-	strncat(text, sleepEndStr, sizeof(sleepEndStr));
 	
 	text_layer_set_text(textLayer, text);
 }
@@ -95,13 +131,20 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	TextLayer *targetLayer = bottleTextLayer;
 	int persistKey = PERSIST_BOTTLE;
 	
+	time_t t = time(NULL);
+	
 	if (bt == BUTTON_ID_SELECT) {
 		targetText = timeTextMiddle;
 		targetLayer = diaperTextLayer;
 		persistKey = PERSIST_DIAPER;
+		diaperStart = t;
+		setTimeSinceText(diaperStart, timeSinceTextMiddle, diaperSinceTextLayer);
+	} else {
+		bottleStart = t;
+		setTimeSinceText(bottleStart, timeSinceTextUp, bottleSinceTextLayer);
 	}
 	
-	time_t t = time(NULL);
+	
 	persist_write_int(persistKey, t);
 	sendToPhone(persistKey, t);
 	
@@ -111,8 +154,6 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
 	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Down");
-	
-	time_t sleepEnd = 0;
 	
 	if (sleeping) {
 		sleepEnd = time(NULL);
@@ -128,6 +169,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	}
 	
 	setTimeRangeText(sleepStart, sleepEnd, timeTextDown, moonTextLayer);
+	setTimeSinceText(MAX(sleepStart, sleepEnd), timeSinceTextDown, moonSinceTextLayer);
 }
 
 void config_provider(Window *window) {
@@ -136,6 +178,13 @@ void config_provider(Window *window) {
 	window_single_click_subscribe(BUTTON_ID_DOWN, down_single_click_handler);
 }
 
+/***** Tick Events *****/
+
+static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
+	if (bottleStart != 0) setTimeSinceText(bottleStart, timeSinceTextUp, bottleSinceTextLayer);
+	if (diaperStart != 0) setTimeSinceText(diaperStart, timeSinceTextMiddle, diaperSinceTextLayer);
+	if (sleepStart != 0 || sleepEnd != 0) setTimeSinceText(MAX(sleepStart, sleepEnd), timeSinceTextDown, moonSinceTextLayer);
+}
 
 /***** Watch-phone communication *****/
 
@@ -195,45 +244,68 @@ static void window_load(Window *window) {
 
 	// Text layers
 	
-	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	bottleSinceTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 + 2 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_text_alignment(bottleSinceTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(bottleSinceTextLayer, "");
+	text_layer_set_font(bottleSinceTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	layer_add_child(window_layer, text_layer_get_layer(bottleSinceTextLayer));
+	
+	diaperSinceTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 + 2 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_font(diaperSinceTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	text_layer_set_text_alignment(diaperSinceTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(diaperSinceTextLayer, "");
+	layer_add_child(window_layer, text_layer_get_layer(diaperSinceTextLayer));
+
+	moonSinceTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 + 2 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	text_layer_set_font(moonSinceTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+	text_layer_set_text_alignment(moonSinceTextLayer, GTextAlignmentCenter);
+	text_layer_set_text(moonSinceTextLayer, "");
+	layer_add_child(window_layer, text_layer_get_layer(moonSinceTextLayer));
+	
+	
+	bottleTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/3/2 - 20 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
 	text_layer_set_text_alignment(bottleTextLayer, GTextAlignmentCenter);
 	text_layer_set_text(bottleTextLayer, "");
 	text_layer_set_font(bottleTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	layer_add_child(window_layer, text_layer_get_layer(bottleTextLayer));
 	
-	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	diaperTextLayer = text_layer_create((GRect){ .origin = {0, bounds.size.h/2 - 20 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
 	text_layer_set_font(diaperTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(diaperTextLayer, GTextAlignmentCenter);
 	text_layer_set_text(diaperTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(diaperTextLayer));
 	
-	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 12 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
+	moonTextLayer = text_layer_create((GRect){ .origin = {0, 5*bounds.size.h/3/2 - 20 }, .size = {bounds.size.w -  ACTION_BAR_WIDTH, 24} });
 	text_layer_set_font(moonTextLayer, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
 	text_layer_set_text_alignment(moonTextLayer, GTextAlignmentCenter);
 	text_layer_set_text(moonTextLayer, "");
 	layer_add_child(window_layer, text_layer_get_layer(moonTextLayer));
 	
+	
 	// Time values initialization
 	if (persist_exists(PERSIST_BOTTLE)) {
-		time_t t = persist_read_int(PERSIST_BOTTLE);
-		setTimeText(t, timeTextUp, bottleTextLayer);
+		bottleStart = persist_read_int(PERSIST_BOTTLE);
+		setTimeText(bottleStart, timeTextUp, bottleTextLayer);
+		setTimeSinceText(bottleStart, timeSinceTextUp, bottleSinceTextLayer);
 	}
 	
 	if (persist_exists(PERSIST_DIAPER)) {
-		time_t t = persist_read_int(PERSIST_DIAPER);
-		setTimeText(t, timeTextMiddle, diaperTextLayer);
+		diaperStart = persist_read_int(PERSIST_DIAPER);
+		setTimeText(diaperStart, timeTextMiddle, diaperTextLayer);
+		setTimeSinceText(diaperStart, timeSinceTextMiddle, diaperSinceTextLayer);
 	}
 	
 	if (persist_exists(PERSIST_MOON_START)) {
 		sleepStart = persist_read_int(PERSIST_MOON_START);
 		
-		time_t t = persist_exists(PERSIST_MOON_END)? persist_read_int(PERSIST_MOON_END) : 0;
+		sleepEnd = persist_exists(PERSIST_MOON_END)? persist_read_int(PERSIST_MOON_END) : 0;
 
-		if (t == 0) {
+		if (sleepEnd == 0 && sleepStart != 0) {
 			sleeping = 1;
 		}
 		
-		setTimeRangeText(sleepStart, t, timeTextDown, moonTextLayer);
+		setTimeRangeText(sleepStart, sleepEnd, timeTextDown, moonTextLayer);
+		setTimeSinceText(MAX(sleepStart, sleepEnd), timeSinceTextDown, moonSinceTextLayer);
 	}
 	
 	// Action Bar
@@ -261,6 +333,10 @@ static void window_unload(Window *window) {
 	text_layer_destroy(diaperTextLayer);
 	text_layer_destroy(moonTextLayer);
 	
+	text_layer_destroy(bottleSinceTextLayer);
+	text_layer_destroy(diaperSinceTextLayer);
+	text_layer_destroy(moonSinceTextLayer);
+	
 	action_bar_layer_destroy(actionBar);
 
 	gbitmap_destroy(actionBottle);
@@ -276,6 +352,7 @@ static void init(void) {
 		.unload = window_unload
 	});
 	window_set_click_config_provider(window, (ClickConfigProvider) config_provider);
+	tick_timer_service_subscribe(MINUTE_UNIT, handle_tick);
 	
 	// Watch-phone communication
 	
