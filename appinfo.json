@@ -49,7 +49,7 @@
     "shortName": "Pebby",
     "uuid": "2a2e6d45-7240-4706-933a-3b521cf17490",
     "versionCode": 1,
-    "versionLabel": "1.0",
+    "versionLabel": "1.2",
     "watchapp": {
         "watchface": false
     }

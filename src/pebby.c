@@ -65,17 +65,22 @@ static void setTimeText(time_t timestamp, char *text, TextLayer *textLayer) {
 }
 
 static void setTimeSinceText(time_t timestamp, char *text, TextLayer *textLayer) {
-	time_t now = time(NULL);
-	time_t elapsed = now - timestamp;
 	
-	if (elapsed < 60) {
-		strcpy(text, "(just now)");
-	} else if (elapsed < 3600) {
-		int minutes = ceil((double) elapsed / 60);
-		snprintf(text, sizeof(timeSinceTextUp), "(%d min ago)", minutes);
+	if (timestamp > 0) {
+		time_t now = time(NULL);
+		time_t elapsed = now - timestamp;
+
+		if (elapsed < 60) {
+			strcpy(text, "(just now)");
+		} else if (elapsed < 3600) {
+			int minutes = ceil((double) elapsed / 60);
+			snprintf(text, sizeof(timeSinceTextUp), "(%d min ago)", minutes);
+		} else {
+			int hours = elapsed / 3600;
+			snprintf(text, sizeof(timeSinceTextUp), "(%d h ago)", hours);
+		}
 	} else {
-		int hours = elapsed / 3600;
-		snprintf(text, sizeof(timeSinceTextUp), "(%d h ago)", hours);
+		text[0] = '\0';
 	}
 	
 	// strftime(text, sizeof(timeTextUp), (clock_is_24h_style()? "%H:%M" : "%I:%M"), time);
@@ -236,6 +241,14 @@ void in_received_handler(DictionaryIterator *received, void *context) {
 			text_layer_set_text(bottleTextLayer, timeTextUp);
 			text_layer_set_text(diaperTextLayer, timeTextMiddle);
 			text_layer_set_text(moonTextLayer, timeTextDown);
+			
+			timeSinceTextUp[0] = '\0';
+			timeSinceTextMiddle[0] = '\0';
+			timeSinceTextDown[0] = '\0';
+			
+			text_layer_set_text(bottleSinceTextLayer, timeSinceTextUp);
+			text_layer_set_text(diaperSinceTextLayer, timeSinceTextMiddle);
+			text_layer_set_text(moonSinceTextLayer, timeSinceTextDown);
 		}
 	}
 }
