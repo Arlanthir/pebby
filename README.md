@@ -10,10 +10,10 @@ A basic configuration page for this app should have a way to display statistics 
 Example:
 
     yourpage.html#{  
-      "1": `[<timestamp>`, `<timestamp>`, `<timestamp>`, ...],  
-      "2": `[<timestamp>`, `<timestamp>`, `<timestamp>`, ...],  
-      "3": `[<timestamp>`, `<timestamp>`, `<timestamp>`, ...],  
-      "4": `[<timestamp>`, `<timestamp>`, `<timestamp>`, ...]  
+      "1": [<timestamp>, <timestamp>, <timestamp>, ...],  
+      "2": [<timestamp>, <timestamp>, <timestamp>, ...],  
+      "3": [<timestamp>, <timestamp>, <timestamp>, ...],  
+      "4": [<timestamp>, <timestamp>, <timestamp>, ...]  
     }
 
 Where:
