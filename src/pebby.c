@@ -162,9 +162,10 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 		sleeping = 0;
 	} else {
 		sleepStart = time(NULL);
+		sleepEnd = 0;
 		persist_write_int(PERSIST_MOON_START, sleepStart);
 		sendToPhone(PERSIST_MOON_START, sleepStart);
-		persist_write_int(PERSIST_MOON_END, 0);
+		persist_write_int(PERSIST_MOON_END, sleepEnd);
 		sleeping = 1;
 	}
 	
@@ -196,7 +197,19 @@ void out_sent_handler(DictionaryIterator *sent, void *context) {
 
 void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *context) {
 	// Outgoing message failed
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 151, "Pebble: Out message failed");
+	char logMsg[64];
+	snprintf(logMsg, 64, "Pebble: Out message failed, reason: %d", reason);
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 201, logMsg);
+	if (reason != APP_MSG_SEND_TIMEOUT) {
+		return;
+	}
+	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 205, "Retrying message send...");
+	
+	DictionaryIterator *iter;
+	app_message_outbox_begin(&iter);
+	uint32_t sizes[] = {64, 64};
+	dict_merge(iter, sizes, failed, 0, NULL, NULL);
+	app_message_outbox_send();
 }
 
 
