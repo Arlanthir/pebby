@@ -118,13 +118,26 @@ static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *t
 
 /***** Click Provider *****/
 
-void sendToPhone(int key, time_t message) {
+void sendToPhone(int key, uint32_t timestamp) {
 	// Send value to phone
 	DictionaryIterator *iter;
-	app_message_outbox_begin(&iter);
-	Tuplet value = TupletInteger(key, message);
-	dict_write_tuplet(iter, &value);
-	app_message_outbox_send();
+
+	if (app_message_outbox_begin(&iter) != APP_MSG_OK) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to start outbound message");
+        return;
+    };
+
+    if (!iter) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to start outbound message");
+        return;
+    }
+
+	dict_write_uint32(iter, key, timestamp);
+	
+    if (app_message_outbox_send() != APP_MSG_OK) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to send outbound message");
+        return;
+    }
 }
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -205,16 +218,30 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 	char logMsg[64];
 	snprintf(logMsg, 64, "Pebble: Out message failed, reason: %d", reason);
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, logMsg);
+
 	if (reason != APP_MSG_SEND_TIMEOUT) {
 		return;
 	}
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Retrying message send...");
 	
-	DictionaryIterator *iter;
-	app_message_outbox_begin(&iter);
-	uint32_t sizes[] = {64, 64};
-	dict_merge(iter, sizes, failed, 0, NULL, NULL);
-	app_message_outbox_send();
+    Tuple* failedMessage = dict_read_first(failed);
+
+    if (!failedMessage) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "failed to reread failed message");
+        return;
+    }
+
+    if (failedMessage->type != TUPLE_UINT || failedMessage->length != 4) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "invalid message type");
+        return;
+    }
+
+    if (dict_read_next(failed)) {
+        app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "invalid message content");
+        return;
+    }
+
+    sendToPhone(failedMessage->key, failedMessage->value[0].uint32);
 }
 
 
