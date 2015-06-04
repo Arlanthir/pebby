@@ -21,6 +21,18 @@ function serializeStorage(storage) {
     return JSON.stringify(data);
 }
 
+function resetData() {
+    memoryArray[PERSIST_BOTTLE] = [];
+    memoryArray[PERSIST_DIAPER] = [];
+    memoryArray[PERSIST_MOON_START] = [];
+    memoryArray[PERSIST_MOON_END] = [];
+
+    window.localStorage.setItem(PERSIST_BOTTLE, JSON.stringify(memoryArray[PERSIST_BOTTLE]));
+    window.localStorage.setItem(PERSIST_DIAPER, JSON.stringify(memoryArray[PERSIST_DIAPER]));
+    window.localStorage.setItem(PERSIST_MOON_START, JSON.stringify(memoryArray[PERSIST_MOON_START]));
+    window.localStorage.setItem(PERSIST_MOON_END, JSON.stringify(memoryArray[PERSIST_MOON_END]));
+}
+
 Pebble.addEventListener("ready",
 	function(e) {
 		console.log("Pebby JavaScript ready!");
@@ -29,21 +41,17 @@ Pebble.addEventListener("ready",
 		if (window.localStorage.getItem(PERSIST_BOTTLE) === null) {
             console.log("First start, initializing local storage");
 
-			// Init values, first time only
-			memoryArray[PERSIST_BOTTLE] = [];
-			memoryArray[PERSIST_DIAPER] = [];
-			memoryArray[PERSIST_MOON_START] = [];
-			memoryArray[PERSIST_MOON_END] = [];
-
-			window.localStorage.setItem(PERSIST_BOTTLE, JSON.stringify(memoryArray[PERSIST_BOTTLE]));
-			window.localStorage.setItem(PERSIST_DIAPER, JSON.stringify(memoryArray[PERSIST_DIAPER]));
-			window.localStorage.setItem(PERSIST_MOON_START, JSON.stringify(memoryArray[PERSIST_MOON_START]));
-			window.localStorage.setItem(PERSIST_MOON_END, JSON.stringify(memoryArray[PERSIST_MOON_END]));
+            resetData();
 		} else {
-			memoryArray[PERSIST_BOTTLE] = JSON.parse(window.localStorage.getItem(PERSIST_BOTTLE));
-			memoryArray[PERSIST_DIAPER] = JSON.parse(window.localStorage.getItem(PERSIST_DIAPER));
-			memoryArray[PERSIST_MOON_START] = JSON.parse(window.localStorage.getItem(PERSIST_MOON_START));
-			memoryArray[PERSIST_MOON_END] = JSON.parse(window.localStorage.getItem(PERSIST_MOON_END));
+            try {
+                memoryArray[PERSIST_BOTTLE] = JSON.parse(window.localStorage.getItem(PERSIST_BOTTLE));
+                memoryArray[PERSIST_DIAPER] = JSON.parse(window.localStorage.getItem(PERSIST_DIAPER));
+                memoryArray[PERSIST_MOON_START] = JSON.parse(window.localStorage.getItem(PERSIST_MOON_START));
+                memoryArray[PERSIST_MOON_END] = JSON.parse(window.localStorage.getItem(PERSIST_MOON_END));
+            } catch (e) {
+                console.log('aieeee, malformed data in local storage, clearing');
+                resetData();
+            }
 		}
 	}
 );
@@ -83,7 +91,8 @@ Pebble.addEventListener("webviewclosed",
 		if (e.response == "reset") {
 			console.log("Local Storage cleared");
 
-			window.localStorage.clear();
+            resetData();
+
 			Pebble.sendAppMessage({"0": "reset" });
 		}
 	}
