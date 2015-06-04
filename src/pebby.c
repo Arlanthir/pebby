@@ -129,7 +129,7 @@ void sendToPhone(int key, time_t message) {
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
-	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Up");
+	//app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Click Up");
 
 	ButtonId bt = click_recognizer_get_button_id(recognizer);
 	char *targetText = timeTextUp;
@@ -158,7 +158,7 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	//Window *window = (Window *)context;
-	//app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 101, "Click Down");
+	//app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Click Down");
 	
 	if (sleeping) {
 		sleepEnd = time(NULL);
@@ -196,7 +196,7 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 
 void out_sent_handler(DictionaryIterator *sent, void *context) {
 	// Outgoing message was delivered
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 145, "Pebble: Out message delivered");
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Pebble: Out message delivered");
 }
 
 
@@ -204,11 +204,11 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 	// Outgoing message failed
 	char logMsg[64];
 	snprintf(logMsg, 64, "Pebble: Out message failed, reason: %d", reason);
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 201, logMsg);
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, logMsg);
 	if (reason != APP_MSG_SEND_TIMEOUT) {
 		return;
 	}
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 205, "Retrying message send...");
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Retrying message send...");
 	
 	DictionaryIterator *iter;
 	app_message_outbox_begin(&iter);
@@ -220,14 +220,14 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 
 void in_received_handler(DictionaryIterator *received, void *context) {
 	// Incoming message received
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 157, "Pebble: In message received");
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Pebble: In message received");
 	
 	// Check for fields you expect to receive
 	Tuple *text_tuple = dict_find(received, 0);
 	
 	// Act on the found fields received
 	if (text_tuple) {
-		app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 169, "Received message: %s", text_tuple->value->cstring);
+		app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Received message: %s", text_tuple->value->cstring);
 		if (strcmp(text_tuple->value->cstring, "reset") == 0) {
 			persist_write_int(PERSIST_BOTTLE, 0);
 			persist_write_int(PERSIST_DIAPER, 0);
@@ -256,7 +256,7 @@ void in_received_handler(DictionaryIterator *received, void *context) {
 
 void in_dropped_handler(AppMessageResult reason, void *context) {
 	// Incoming message dropped
-	app_log(APP_LOG_LEVEL_DEBUG, "pebby.c", 163, "Pebble: In message failed");
+	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Pebble: In message failed");
 }
 
 
