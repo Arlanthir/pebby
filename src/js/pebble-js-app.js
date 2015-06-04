@@ -12,9 +12,11 @@ function serializeStorage(storage) {
         data = {},
         key;
 
-    while ((key = storage.key(keyIndex++)) !== null) {
-        data[key] = storage.getItem(key);
-    }
+    [1, 2, 3, 4].forEach(function(key) {
+        var value = storage.getItem(key);
+
+        data[key] = value !== null ? value : [];
+    });
 
     return JSON.stringify(data);
 }
