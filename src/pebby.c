@@ -436,6 +436,9 @@ static void window_unload(Window *window) {
 	gbitmap_destroy(actionBottle);
 	gbitmap_destroy(actionDiaper);
 	gbitmap_destroy(actionMoon);
+
+    text_layer_destroy(loadingTextLayer);
+    window_destroy(loadingWindow);
 }
 
 
