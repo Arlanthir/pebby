@@ -7,10 +7,22 @@ var PERSIST_MOON_END = 4;
 
 var memoryArray = {};
 
+function serializeStorage(storage) {
+    var keyIndex = 0,
+        data = {},
+        key;
+
+    while ((key = storage.key(keyIndex++)) !== null) {
+        data[key] = storage.getItem(key);
+    }
+
+    return JSON.stringify(data);
+}
+
 Pebble.addEventListener("ready",
 	function(e) {
 		console.log("Pebby JavaScript ready!");
-//        console.log("local storage: " + JSON.stringify(window.localStorage));
+        console.log("local storage: " + serializeStorage(window.localStorage));
 
 		if (window.localStorage.getItem(PERSIST_BOTTLE) === null) {
             console.log("First start, initializing local storage");
@@ -59,7 +71,7 @@ Pebble.addEventListener("appmessage",
 
 Pebble.addEventListener("showConfiguration",
 	function(e) {
-		Pebble.openURL("http://www.epicvortex.com/pebble/pebby.html?#" + JSON.stringify(window.localStorage));
+		Pebble.openURL("http://www.epicvortex.com/pebble/pebby.html?#" + serializeStorage(window.localStorage));
 	}
 );
 
