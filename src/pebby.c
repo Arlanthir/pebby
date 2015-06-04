@@ -18,6 +18,9 @@
 
 static Window *window;
 
+static Window *loadingWindow;
+static TextLayer *loadingTextLayer;
+
 // Texts
 
 static TextLayer *bottleTextLayer;
@@ -118,26 +121,59 @@ static void setTimeRangeText(time_t startTimestamp, time_t endTimestamp, char *t
 
 /***** Click Provider *****/
 
+bool isLoading() {
+    return window_stack_get_top_window() == loadingWindow;
+}
+
+void showSendingNotification() {
+    text_layer_set_text(loadingTextLayer, "Sending...");
+
+    if (!isLoading()) {
+        window_stack_push(loadingWindow, true);
+    }
+}
+
+void showFailedNotification() {
+    text_layer_set_text(loadingTextLayer, "Failed");
+
+    if (!isLoading()) {
+        window_stack_push(loadingWindow, true);
+    }
+}
+
+void hideNotification() {
+    if (!isLoading()) {
+        return;
+    }
+
+    window_stack_pop(true);
+}
+
 void sendToPhone(int key, uint32_t timestamp) {
 	// Send value to phone
 	DictionaryIterator *iter;
 
 	if (app_message_outbox_begin(&iter) != APP_MSG_OK) {
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to start outbound message");
+        showFailedNotification();
         return;
     };
 
     if (!iter) {
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to start outbound message");
+        showFailedNotification();
         return;
     }
 
 	dict_write_uint32(iter, key, timestamp);
 	
     if (app_message_outbox_send() != APP_MSG_OK) {
+        showFailedNotification();
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "unable to send outbound message");
         return;
     }
+
+    showSendingNotification();
 }
 
 void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -210,6 +246,7 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 void out_sent_handler(DictionaryIterator *sent, void *context) {
 	// Outgoing message was delivered
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Pebble: Out message delivered");
+    hideNotification();
 }
 
 
@@ -219,7 +256,8 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 	snprintf(logMsg, 64, "Pebble: Out message failed, reason: %d", reason);
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, logMsg);
 
-	if (reason != APP_MSG_SEND_TIMEOUT) {
+	if (reason != APP_MSG_SEND_TIMEOUT || !isLoading()) {
+        showFailedNotification();
 		return;
 	}
 	app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "Retrying message send...");
@@ -228,16 +266,19 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 
     if (!failedMessage) {
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "failed to reread failed message");
+        showFailedNotification();
         return;
     }
 
     if (failedMessage->type != TUPLE_UINT || failedMessage->length != 4) {
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "invalid message type");
+        showFailedNotification();
         return;
     }
 
     if (dict_read_next(failed)) {
         app_log(APP_LOG_LEVEL_DEBUG, __FILE__, __LINE__, "invalid message content");
+        showFailedNotification();
         return;
     }
 
@@ -398,6 +439,23 @@ static void window_unload(Window *window) {
 }
 
 
+static void createLoadingWindow() {
+    loadingWindow = window_create();
+
+    Layer *windowLayer = window_get_root_layer(loadingWindow);
+    GRect bounds = layer_get_bounds(windowLayer);
+
+    loadingTextLayer = text_layer_create((GRect){
+        .origin = {0, 70},
+        .size = {bounds.size.w, 20}
+    });
+
+    text_layer_set_text(loadingTextLayer, "Sending...");
+    text_layer_set_text_alignment(loadingTextLayer, GTextAlignmentCenter);
+
+    layer_add_child(windowLayer, text_layer_get_layer(loadingTextLayer));
+}
+
 static void init(void) {
 	window = window_create();
 	window_set_window_handlers(window, (WindowHandlers) {
@@ -406,7 +464,9 @@ static void init(void) {
 	});
 	window_set_click_config_provider(window, (ClickConfigProvider) config_provider);
 	tick_timer_service_subscribe(MINUTE_UNIT, handle_tick);
-	
+
+    createLoadingWindow();
+
 	// Watch-phone communication
 	
 	app_message_register_inbox_received(in_received_handler);
