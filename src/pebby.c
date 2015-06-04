@@ -129,7 +129,7 @@ void showSendingNotification() {
     text_layer_set_text(loadingTextLayer, "Sending...");
 
     if (!isLoading()) {
-        window_stack_push(loadingWindow, true);
+        window_stack_push(loadingWindow, false);
     }
 }
 
@@ -137,7 +137,7 @@ void showFailedNotification() {
     text_layer_set_text(loadingTextLayer, "Failed");
 
     if (!isLoading()) {
-        window_stack_push(loadingWindow, true);
+        window_stack_push(loadingWindow, false);
     }
 }
 
@@ -146,7 +146,7 @@ void hideNotification() {
         return;
     }
 
-    window_stack_pop(true);
+    window_stack_pop(false);
 }
 
 void sendToPhone(int key, uint32_t timestamp) {
