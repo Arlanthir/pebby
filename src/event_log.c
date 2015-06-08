@@ -49,7 +49,7 @@ void purge_from_start(uint8_t count) {
 
     LOG(APP_LOG_LEVEL_DEBUG, "purged %d events", (int)count);
 
-    firstEventIdx += count;
+    firstEventIdx = (firstEventIdx + count) % EVENT_LOG_MAX_SIZE;
 }
 
 uint8_t serialize_event(Event *event, uint8_t *buffer) {
