@@ -1,3 +1,6 @@
+#ifndef UI_H
+#define UI_H
+
 #include <pebble.h>
 #include <time.h>
 #include <math.h>
@@ -18,3 +21,5 @@ void ui_init(ClickConfigProvider clickConfigProvider);
 void ui_update();
 
 void ui_deinit();
+
+#endif // UI_H

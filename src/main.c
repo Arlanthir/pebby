@@ -1,10 +1,11 @@
-#include "pebble.h"
+#include <pebble.h>
 #include <math.h>
 #include <string.h>
 #include <time.h>
 
 #include "common.h"
 #include "ui.h"
+#include "event_log.h"
 
 static int sleeping = 0;
 
@@ -13,6 +14,7 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	
     ui_feed(t);
     persist_write_int(PERSIST_BOTTLE, t);
+    log_event(EVENT_TYPE_FEED, t);
 }
 
 void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -20,6 +22,7 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 
     ui_diaper_change(t);
     persist_write_int(PERSIST_DIAPER, t);
+    log_event(EVENT_TYPE_DIAPER_CHANGE, t);
 }
 
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -28,11 +31,13 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if (sleeping) {
 		persist_write_int(PERSIST_MOON_END, t);
         ui_sleep_stop(t);
+        log_event(EVENT_TYPE_SLEEP_STOP, t);
 		sleeping = 0;
 	} else {
 		persist_write_int(PERSIST_MOON_START, t);
         persist_write_int(PERSIST_MOON_END, 0);
         ui_sleep_start(t);
+        log_event(EVENT_TYPE_SLEEP_START, t);
 		sleeping = 1;
 	}
 }
