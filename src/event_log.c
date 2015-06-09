@@ -9,14 +9,14 @@ uint8_t event_log_size() {
     return eventLogSize;
 }
 
-uint8_t log_full() {
+bool log_full() {
     return eventLogSize == EVENT_LOG_MAX_SIZE;
 }
 
-uint8_t log_event(EventType type, time_t timestamp) {
+bool log_event(EventType type, time_t timestamp) {
     if (log_full()) {
         APP_LOG(APP_LOG_LEVEL_ERROR, "log capacity exhausted");
-        return 0;
+        return false;
     }
 
     eventLog[(firstEventIdx + eventLogSize++) % EVENT_LOG_MAX_SIZE] = (Event){
@@ -26,10 +26,10 @@ uint8_t log_event(EventType type, time_t timestamp) {
 
     LOG(APP_LOG_LEVEL_DEBUG, "recorded one event");
 
-    return 1;
+    return true;
 }
 
-Event* get_event(uint8_t index) {
+Event* log_get_event(uint8_t index) {
     if (index >= EVENT_LOG_MAX_SIZE) {
         APP_LOG(APP_LOG_LEVEL_ERROR, "log index %d: out of range", (int)index);
         return NULL;
@@ -38,7 +38,7 @@ Event* get_event(uint8_t index) {
     return &eventLog[(firstEventIdx + index) % EVENT_LOG_MAX_SIZE];
 }
 
-void purge_from_start(uint8_t count) {
+void log_purge_from_start(uint8_t count) {
     if (count > eventLogSize) {
         APP_LOG(APP_LOG_LEVEL_ERROR,
             "requested to purge %d events, but log contains only %d events",
@@ -50,9 +50,10 @@ void purge_from_start(uint8_t count) {
     LOG(APP_LOG_LEVEL_DEBUG, "purged %d events", (int)count);
 
     firstEventIdx = (firstEventIdx + count) % EVENT_LOG_MAX_SIZE;
+    eventLogSize -= count;
 }
 
-uint8_t serialize_event(Event *event, uint8_t *buffer) {
+void log_serialize_event(Event *event, uint8_t *buffer) {
     *(buffer++) = event->type;
 
     time_t timestamp = event->timestamp;
@@ -60,6 +61,4 @@ uint8_t serialize_event(Event *event, uint8_t *buffer) {
         *(buffer++) = timestamp & 0xFF;
         timestamp = timestamp >> 8;
     }
-
-    return 5;
 }

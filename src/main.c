@@ -6,6 +6,7 @@
 #include "common.h"
 #include "ui.h"
 #include "event_log.h"
+#include "communication.h"
 
 static int sleeping = 0;
 
@@ -15,6 +16,8 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     ui_feed(t);
     persist_write_int(PERSIST_BOTTLE, t);
     log_event(EVENT_TYPE_FEED, t);
+
+    comm_transmit();
 }
 
 void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -23,6 +26,8 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     ui_diaper_change(t);
     persist_write_int(PERSIST_DIAPER, t);
     log_event(EVENT_TYPE_DIAPER_CHANGE, t);
+
+    comm_transmit();
 }
 
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -40,6 +45,8 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
         log_event(EVENT_TYPE_SLEEP_START, t);
 		sleeping = 1;
 	}
+
+    comm_transmit();
 }
 
 void config_provider(void* context) {
@@ -57,12 +64,14 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 /***** App *****/
 
 static void deinit() {
+    comm_deinit();
     ui_deinit();
     tick_timer_service_unsubscribe();
 }
 
 static void init() {
     ui_init(config_provider);
+    comm_init();
 
     tick_timer_service_subscribe(MINUTE_UNIT, handle_tick);
 
