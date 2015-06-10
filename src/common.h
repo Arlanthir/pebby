@@ -15,5 +15,6 @@
 #define PERSIST_DIAPER 2
 #define PERSIST_MOON_START 3
 #define PERSIST_MOON_END 4
+#define PERSIST_LOG 5
 
 #endif // COMMON_H

@@ -17,6 +17,8 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     persist_write_int(PERSIST_BOTTLE, t);
     log_event(EVENT_TYPE_FEED, t);
 
+    LOG(APP_LOG_LEVEL_DEBUG, "feed %lu", (uint32_t)t);
+
     comm_transmit();
 }
 
@@ -27,6 +29,8 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
     persist_write_int(PERSIST_DIAPER, t);
     log_event(EVENT_TYPE_DIAPER_CHANGE, t);
 
+    LOG(APP_LOG_LEVEL_DEBUG, "diaper change %lu", (uint32_t)t);
+
     comm_transmit();
 }
 
@@ -36,14 +40,18 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if (sleeping) {
 		persist_write_int(PERSIST_MOON_END, t);
         ui_sleep_stop(t);
-        log_event(EVENT_TYPE_SLEEP_STOP, t);
+        log_event(EVENT_TYPE_SLEEP_START, t);
 		sleeping = 0;
+
+        LOG(APP_LOG_LEVEL_DEBUG, "sleep start %lu", (uint32_t)t);
 	} else {
 		persist_write_int(PERSIST_MOON_START, t);
         persist_write_int(PERSIST_MOON_END, 0);
         ui_sleep_start(t);
-        log_event(EVENT_TYPE_SLEEP_START, t);
+        log_event(EVENT_TYPE_SLEEP_STOP, t);
 		sleeping = 1;
+
+        LOG(APP_LOG_LEVEL_DEBUG, "sleep stop %lu", (uint32_t)t);
 	}
 
     comm_transmit();
@@ -66,10 +74,13 @@ static void handle_tick(struct tm *tick_time, TimeUnits units_changed) {
 static void deinit() {
     comm_deinit();
     ui_deinit();
+    log_deinit();
+
     tick_timer_service_unsubscribe();
 }
 
 static void init() {
+    log_init();
     ui_init(config_provider);
     comm_init();
 

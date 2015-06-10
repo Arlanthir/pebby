@@ -32,4 +32,14 @@ void log_purge_from_start(uint8_t count);
 
 void log_serialize_event(Event* event, uint8_t *buffer);
 
+uint8_t log_calculate_serialized_size();
+
+void log_serialize(uint8_t *buffer);
+
+bool log_unserialize(const uint8_t *buffer);
+
+void log_init();
+
+void log_deinit();
+
 #endif // EVENT_LOG_H

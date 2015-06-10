@@ -29,15 +29,17 @@ static void outbox_sent(DictionaryIterator *iterator, void *context) {
     log_purge_from_start(eventsInMessage);
     transmit_in_progress = false;
 
-    if (event_log_size() != 0) {
+    if (comm_ready && event_log_size() != 0) {
         LOG(APP_LOG_LEVEL_DEBUG, "log contains new events, sending...");
         comm_transmit();
     }
 }
 
 static void retry_timer_handler(void *data) {
-    LOG(APP_LOG_LEVEL_DEBUG, "retransmitting");
-    comm_transmit();
+    if (comm_ready) {
+        LOG(APP_LOG_LEVEL_DEBUG, "retransmitting");
+        comm_transmit();
+    }
 }
 
 static void outbox_failed(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
@@ -72,9 +74,15 @@ void comm_init() {
         comm_ready = false;
         LOG(APP_LOG_LEVEL_ERROR, "failed to start message system, reason %i", (int)openResult);
     }
+
+    if (event_log_size() > 0) {
+        comm_transmit();
+    }
 }
 
 void comm_deinit() {
+    comm_ready = false;
+    
     bluetooth_connection_service_unsubscribe();
     app_message_deregister_callbacks();
 }
@@ -99,15 +107,9 @@ void comm_transmit() {
         LOG(APP_LOG_LEVEL_DEBUG, "event log is empty, nothing to transmit");
     }
 
-    uint8_t nEvents = event_log_size(),
-            bufferSize = SERIALIZED_EVENT_SIZE * nEvents + 1;
-
+    uint8_t bufferSize = log_calculate_serialized_size();
     uint8_t buffer[bufferSize];
-    buffer[0] = bufferSize;
-
-    for (uint8_t i = 0; i < nEvents; i++) {
-        log_serialize_event(log_get_event(i), &buffer[SERIALIZED_EVENT_SIZE * i + 1]);
-    }
+    log_serialize(buffer);
 
     DictionaryIterator *iterator;
 
@@ -135,5 +137,5 @@ void comm_transmit() {
     }
 
     transmit_in_progress = true;
-    eventsInMessage = nEvents;
+    eventsInMessage = event_log_size();
 }
