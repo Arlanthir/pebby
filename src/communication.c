@@ -4,7 +4,11 @@
 #include "common.h"
 #include "event_log.h"
 
-#define MESSAGE_KEY_EVENT_BLOB 0
+#define MESSAGE_KEY_EVENT_BLOB 1
+#define MESSAGE_KEY_MESSAGE_TYPE 0
+
+#define MESSAGE_TYPE_EVENT_TRANSMISSION 0
+#define MESSAGE_TYPE_RESET_ACK 1
 
 #define RETRY_TIMEOUT 5000
 
@@ -18,7 +22,7 @@ static uint8_t eventsInMessage;
 static void bluetooth_connection_handler(bool state) {
     if (state) {
         LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth connected, starting transmit");
-        comm_transmit();
+        comm_transmit_events();
     } else {
         LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth disconnected");
     }
@@ -31,14 +35,14 @@ static void outbox_sent(DictionaryIterator *iterator, void *context) {
 
     if (comm_ready && event_log_size() != 0) {
         LOG(APP_LOG_LEVEL_DEBUG, "log contains new events, sending...");
-        comm_transmit();
+        comm_transmit_events();
     }
 }
 
 static void retry_timer_handler(void *data) {
     if (comm_ready) {
         LOG(APP_LOG_LEVEL_DEBUG, "retransmitting");
-        comm_transmit();
+        comm_transmit_events();
     }
 }
 
@@ -76,7 +80,7 @@ void comm_init() {
     }
 
     if (event_log_size() > 0) {
-        comm_transmit();
+        comm_transmit_events();
     }
 }
 
@@ -87,7 +91,7 @@ void comm_deinit() {
     app_message_deregister_callbacks();
 }
 
-void comm_transmit() {
+void comm_transmit_events() {
     if (!comm_ready) {
         LOG(APP_LOG_LEVEL_ERROR, "message system not ready, aborting....");
         return;
@@ -121,6 +125,13 @@ void comm_transmit() {
 
     if (!iterator) {
         LOG(APP_LOG_LEVEL_ERROR, "failed to allocate iterator for outgoing message");
+        return;
+    }
+
+    result = dict_write_uint8(iterator, MESSAGE_KEY_MESSAGE_TYPE,
+        MESSAGE_TYPE_EVENT_TRANSMISSION);
+    if (result != DICT_OK) {
+        LOG(APP_LOG_LEVEL_ERROR, "unable to set message type, reason: %i", (int)result);
         return;
     }
 

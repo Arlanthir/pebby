@@ -5,6 +5,6 @@ void comm_init();
 
 void comm_deinit();
 
-void comm_transmit();
+void comm_transmit_events();
 
 #endif // COMMUNICATION_H

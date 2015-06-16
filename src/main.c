@@ -19,7 +19,7 @@ void up_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 
     LOG(APP_LOG_LEVEL_DEBUG, "feed %lu", (uint32_t)t);
 
-    comm_transmit();
+    comm_transmit_events();
 }
 
 void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -31,7 +31,7 @@ void select_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 
     LOG(APP_LOG_LEVEL_DEBUG, "diaper change %lu", (uint32_t)t);
 
-    comm_transmit();
+    comm_transmit_events();
 }
 
 void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
@@ -54,7 +54,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
         LOG(APP_LOG_LEVEL_DEBUG, "sleep stop %lu", (uint32_t)t);
 	}
 
-    comm_transmit();
+    comm_transmit_events();
 }
 
 void config_provider(void* context) {

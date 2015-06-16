@@ -13,7 +13,11 @@ var eventTypes = {
     },
     allEventTypes = [eventTypes.feed, eventTypes.diaper_change, eventTypes.sleep_start, eventTypes.sleep_stop];
 
-var MESSAGE_KEY_EVENT_BLOB = 0;
+var MESSAGE_KEY_EVENT_BLOB = 1,
+    MESSAGE_KEY_MESSAGE_TYPE = 0;
+
+var MESSAGE_TYPE_EVENT_TRANSMISSION = 0,
+    MESSAGE_TYPE_RESET_ACK = 1;
 
 var events = [],
     eventsByTypeAndTimestamp = {
@@ -110,6 +114,25 @@ function addNewEvent(e) {
     return false;
 }
 
+function handleEventTransmission(e) {
+    if (MESSAGE_KEY_EVENT_BLOB in e.payload) {
+        var buffer = e.payload[MESSAGE_KEY_EVENT_BLOB],
+            eventCount = buffer[0],
+            addedEvents = 0;
+
+        console.log('received ' + eventCount + ' events');
+
+        for (var i = 0; i < eventCount; i++) {
+            if (addNewEvent(unserializeEvent(buffer, 1 + 5*i))) addedEvents++;
+        }
+
+        console.log('added ' + addedEvents + ' events, now at ' +
+            events.length + ' events total');
+    } else {
+        console.log('invalid event transmission');
+    }
+}
+
 Pebble.addEventListener("ready",
 	function(e) {
 		console.log("Pebby JavaScript ready!");
@@ -126,21 +149,26 @@ Pebble.addEventListener("appmessage",
 	function(e) {
         console.log('incoming message');
 
-        if (MESSAGE_KEY_EVENT_BLOB in e.payload) {
-            var buffer = e.payload[MESSAGE_KEY_EVENT_BLOB],
-                eventCount = buffer[0],
-                addedEvents = 0;
-
-            console.log('received ' + eventCount + ' events');
-
-            for (var i = 0; i < eventCount; i++) {
-                if (addNewEvent(unserializeEvent(buffer, 1 + 5*i))) addedEvents++;
-            }
-
-            console.log('added ' + addedEvents + ' events, now at ' +
-                events.length + ' events total');
-        } else {
+        if (!(MESSAGE_KEY_MESSAGE_TYPE in e.payload)) {
             console.log('invalid message');
+            return;
+        }
+
+        var messageType = e.payload[MESSAGE_KEY_MESSAGE_TYPE];
+
+        switch (messageType) {
+            case MESSAGE_TYPE_EVENT_TRANSMISSION:
+                console.log('handling event transmission');
+                handleEventTransmission(e);
+                break;
+
+            case MESSAGE_TYPE_RESET_ACK:
+                console.log('handling reset ack');
+                console.log('not implemented');
+                break;
+
+            default:
+                console.log('invalid message type ' + messageType);
         }
     }
 );
