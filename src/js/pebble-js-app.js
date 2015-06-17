@@ -16,8 +16,11 @@ var eventTypes = {
 var MESSAGE_KEY_EVENT_BLOB = 1,
     MESSAGE_KEY_MESSAGE_TYPE = 0;
 
-var MESSAGE_TYPE_EVENT_TRANSMISSION = 0,
-    MESSAGE_TYPE_RESET_ACK = 1;
+var MESSAGE_TYPE_EVENT_TRANSMISSION = 1,
+    MESSAGE_TYPE_RESET_ACK = 2,
+    MESSAGE_TYPE_RESET_REQUEST = 3;
+
+var RETRY_TIMEOUT = 5000;
 
 var events = [],
     eventsByTypeAndTimestamp = {
@@ -26,6 +29,8 @@ var events = [],
         2: {},
         3: {}
     };
+
+var resetPending = false;
 
 var storage;
 
@@ -81,7 +86,16 @@ LocalStorageAdapter.prototype.add = function(e) {
 };
 
 LocalStorageAdapter.prototype.clear = function() {
+    var me = this;
+
     window.localStorage.clear();
+
+    me.unserialized = {};
+
+    allEventTypes.forEach(function(eventType) {
+        me.unserialized[eventType] = [];
+    });
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -115,6 +129,11 @@ function addNewEvent(e) {
 }
 
 function handleEventTransmission(e) {
+    if (resetPending) {
+        console.log('reset pending, ignoring event transmission');
+        return;
+    }
+
     if (MESSAGE_KEY_EVENT_BLOB in e.payload) {
         var buffer = e.payload[MESSAGE_KEY_EVENT_BLOB],
             eventCount = buffer[0],
@@ -131,6 +150,43 @@ function handleEventTransmission(e) {
     } else {
         console.log('invalid event transmission');
     }
+}
+
+function startReset() {
+
+    function send() {
+        var message = {};
+        message[MESSAGE_KEY_MESSAGE_TYPE] = MESSAGE_TYPE_RESET_REQUEST;
+
+        Pebble.sendAppMessage(message,
+            function() {},
+            function() {
+                console.log('send failed, rescheduling...');
+                setTimeout(send, RETRY_TIMEOUT);
+            }
+        );
+    }
+
+    if (resetPending) {
+        return;
+    }
+
+    resetPending = true;
+
+    send();
+}
+
+function handleResetAck() {
+    storage.clear();
+    events = [];
+
+    allEventTypes.forEach(function(type) {
+        eventsByTypeAndTimestamp[type] = {};
+    });
+
+    resetPending = false;
+
+    console.log('reset complete');
 }
 
 Pebble.addEventListener("ready",
@@ -164,7 +220,7 @@ Pebble.addEventListener("appmessage",
 
             case MESSAGE_TYPE_RESET_ACK:
                 console.log('handling reset ack');
-                console.log('not implemented');
+                handleResetAck();
                 break;
 
             default:
@@ -207,7 +263,7 @@ Pebble.addEventListener("webviewclosed",
 	function(e) {
 		console.log("Configuration window returned: " + e.response);
 		if (e.response == "reset") {
-			//Pebble.sendAppMessage({"0": "reset" });
+			startReset();
 		}
 	}
 );

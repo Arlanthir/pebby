@@ -42,4 +42,6 @@ void log_init();
 
 void log_deinit();
 
+void log_reset();
+
 #endif // EVENT_LOG_H

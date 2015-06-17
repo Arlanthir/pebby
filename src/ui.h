@@ -22,4 +22,6 @@ void ui_update();
 
 void ui_deinit();
 
+void ui_reset();
+
 #endif // UI_H

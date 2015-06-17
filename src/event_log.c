@@ -154,3 +154,8 @@ void log_deinit() {
         persist_delete(PERSIST_LOG);
     }
 }
+
+void log_reset() {
+    eventLogSize = firstEventIdx = 0;
+    persist_delete(PERSIST_LOG);
+}

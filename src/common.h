@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define DEBUG_BUILD
+//#define DEBUG_BUILD
 
 #ifdef DEBUG_BUILD
 #define LOG(...) APP_LOG(__VA_ARGS__)

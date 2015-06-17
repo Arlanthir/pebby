@@ -252,3 +252,14 @@ void ui_update() {
 void ui_deinit() {
     window_destroy(window);
 }
+
+void ui_reset() {
+    lastFeed = lastDiaperChange = lastSleepStart = lastSleepStop = 0;
+
+    persist_delete(PERSIST_BOTTLE);
+    persist_delete(PERSIST_DIAPER);
+    persist_delete(PERSIST_MOON_START);
+    persist_delete(PERSIST_MOON_END);
+
+    update_text_layers();
+}
