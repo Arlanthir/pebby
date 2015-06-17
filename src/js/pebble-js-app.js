@@ -255,7 +255,7 @@ Pebble.addEventListener("showConfiguration",
 
         console.log(url);
 
-		Pebble.openURL(url);
+        Pebble.openURL(url);
 	}
 );
 
