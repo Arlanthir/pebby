@@ -24,15 +24,6 @@ static bool resetSignaled = false;
 
 static uint8_t eventsInMessage;
 
-static void bluetooth_connection_handler(bool state) {
-    if (state) {
-        LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth connected, starting transmit");
-        comm_transmit_events();
-    } else {
-        LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth disconnected");
-    }
-}
-
 static bool ready_to_transmit() {
     if (!commReady) {
         LOG(APP_LOG_LEVEL_ERROR, "message system not ready, aborting....");
@@ -161,7 +152,7 @@ static void outbox_sent(DictionaryIterator *iterator, void *context) {
     }
 }
 
-static void retry_timer_handler(void *data) {
+static void retransmit(void *data) {
     if (!commReady) return;
 
     if (resetSignaled) {
@@ -178,7 +169,16 @@ static void outbox_failed(DictionaryIterator *iterator, AppMessageResult reason,
 
     transmitInProgress = false;
 
-    app_timer_register(RETRY_TIMEOUT, retry_timer_handler, NULL);
+    app_timer_register(RETRY_TIMEOUT, retransmit, NULL);
+}
+
+static void bluetooth_connection_handler(bool state) {
+    if (state) {
+        LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth connected, starting transmit");
+        retransmit(NULL);
+    } else {
+        LOG(APP_LOG_LEVEL_DEBUG, "Bluetooth disconnected");
+    }
 }
 
 static void start_reset() {
