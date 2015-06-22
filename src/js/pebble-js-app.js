@@ -88,11 +88,8 @@ LocalStorageAdapter.prototype.add = function(e) {
 LocalStorageAdapter.prototype.clear = function() {
     var me = this;
 
-    window.localStorage.clear();
-
-    me.unserialized = {};
-
     allEventTypes.forEach(function(eventType) {
+        window.localStorage.setItem(eventType, '[]');
         me.unserialized[eventType] = [];
     });
 

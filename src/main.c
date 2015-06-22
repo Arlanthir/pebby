@@ -40,7 +40,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 	if (sleeping) {
 		persist_write_int(PERSIST_MOON_END, t);
         ui_sleep_stop(t);
-        log_event(EVENT_TYPE_SLEEP_START, t);
+        log_event(EVENT_TYPE_SLEEP_STOP, t);
 		sleeping = 0;
 
         LOG(APP_LOG_LEVEL_DEBUG, "sleep start %lu", (uint32_t)t);
@@ -48,7 +48,7 @@ void down_single_click_handler(ClickRecognizerRef recognizer, void *context) {
 		persist_write_int(PERSIST_MOON_START, t);
         persist_write_int(PERSIST_MOON_END, 0);
         ui_sleep_start(t);
-        log_event(EVENT_TYPE_SLEEP_STOP, t);
+        log_event(EVENT_TYPE_SLEEP_START, t);
 		sleeping = 1;
 
         LOG(APP_LOG_LEVEL_DEBUG, "sleep stop %lu", (uint32_t)t);
