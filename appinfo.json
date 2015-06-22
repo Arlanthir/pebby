@@ -3,8 +3,8 @@
   "capabilities": [
     "configurable"
   ],
-  "companyName": "cnspeckn@googlemail.com",
-  "longName": "PebbyCS",
+  "companyName": "mig.jcb@gmail.com",
+  "longName": "Pebby",
   "projectType": "native",
   "resources": {
     "media": [
@@ -46,10 +46,10 @@
       }
     ]
   },
-  "shortName": "PebbyCS",
-  "uuid": "01a70c71-d8c1-4e33-9c12-c646168380e1",
+  "shortName": "Pebby",
+  "uuid": "2a2e6d45-7240-4706-933a-3b521cf17490",
   "versionCode": 1,
-  "versionLabel": "0.2",
+  "versionLabel": "1.2",
   "watchapp": {
     "watchface": false
   },
