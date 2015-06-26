@@ -113,11 +113,10 @@ function unserializeEvent(buffer, index) {
     }
 }
 
-function addNewEvent(e) {
+function registerNewEvent(e) {
     if (e && !eventsByTypeAndTimestamp[e.type][e.timestamp]) {
         events.push(e);
         eventsByTypeAndTimestamp[e.type][e.timestamp] = e;
-        storage.add(e);
 
         return true;
     }
@@ -134,12 +133,18 @@ function handleEventTransmission(e) {
     if (MESSAGE_KEY_EVENT_BLOB in e.payload) {
         var buffer = e.payload[MESSAGE_KEY_EVENT_BLOB],
             eventCount = buffer[0],
-            addedEvents = 0;
+            addedEvents = 0,
+            evt;
 
         console.log('received ' + eventCount + ' events');
 
         for (var i = 0; i < eventCount; i++) {
-            if (addNewEvent(unserializeEvent(buffer, 1 + 5*i))) addedEvents++;
+            evt = unserializeEvent(buffer, 1 + 5*i);
+
+            if (registerNewEvent(evt)) {
+                storage.add(evt);
+                addedEvents++;
+            }
         }
 
         console.log('added ' + addedEvents + ' events, now at ' +
@@ -192,7 +197,7 @@ Pebble.addEventListener("ready",
 
         storage = new LocalStorageAdapter();
 
-        storage.getAll().forEach(addNewEvent);
+        storage.getAll().forEach(registerNewEvent);
 
         console.log("loaded " + events.length + " events from local storage");
     }
