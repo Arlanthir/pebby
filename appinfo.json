@@ -50,7 +50,7 @@
     "shortName": "Baby Watch",
     "uuid": "2a2e6d45-7240-4706-933a-3b521cf17490",
     "versionCode": 1,
-    "versionLabel": "1.3",
+    "versionLabel": "1.4",
     "watchapp": {
         "watchface": false
     }

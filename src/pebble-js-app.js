@@ -54,7 +54,6 @@ Pebble.addEventListener("appmessage",
 
 Pebble.addEventListener("showConfiguration",
 	function(e) {
-		console.log('showConfiguration');
 		var qData = {};
 		qData[PERSIST_BOTTLE] = window.localStorage[PERSIST_BOTTLE];
 		qData[PERSIST_DIAPER] = window.localStorage[PERSIST_DIAPER];
