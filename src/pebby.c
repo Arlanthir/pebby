@@ -399,6 +399,7 @@ static void deinit(void) {
 	window_destroy(window);
 }
 
+// Entry Point
 int main(void) {
 	init();
 	app_event_loop();
