@@ -10,9 +10,9 @@ var memoryArray = {};
 Pebble.addEventListener("ready",
 	function(e) {
 		console.log("Pebby JavaScript ready!");
-		console.log("LocalStorage: " + JSON.stringify(window.localStorage));
-		
-		if (typeof window.localStorage[PERSIST_BOTTLE] === "undefined") {
+
+		if (typeof window.localStorage[PERSIST_BOTTLE] === 'undefined' || window.localStorage[PERSIST_BOTTLE] === null) {
+			console.log('LocalStorage is empty, initting');
 			// Init values, first time only
 			memoryArray[PERSIST_BOTTLE] = [];
 			memoryArray[PERSIST_DIAPER] = [];
@@ -23,6 +23,7 @@ Pebble.addEventListener("ready",
 			window.localStorage[PERSIST_MOON_START] = JSON.stringify(memoryArray[PERSIST_MOON_START]);
 			window.localStorage[PERSIST_MOON_END] = JSON.stringify(memoryArray[PERSIST_MOON_END]);
 		} else {
+			console.log('LocalStorage not empty, loading');
 			memoryArray[PERSIST_BOTTLE] = JSON.parse(window.localStorage[PERSIST_BOTTLE]);
 			memoryArray[PERSIST_DIAPER] = JSON.parse(window.localStorage[PERSIST_DIAPER]);
 			memoryArray[PERSIST_MOON_START] = JSON.parse(window.localStorage[PERSIST_MOON_START]);
@@ -53,7 +54,15 @@ Pebble.addEventListener("appmessage",
 
 Pebble.addEventListener("showConfiguration",
 	function(e) {
-		Pebble.openURL("http://www.epicvortex.com/pebble/pebby.html?#" + JSON.stringify(window.localStorage));
+		console.log('showConfiguration');
+		var qData = {};
+		qData[PERSIST_BOTTLE] = window.localStorage[PERSIST_BOTTLE];
+		qData[PERSIST_DIAPER] = window.localStorage[PERSIST_DIAPER];
+		qData[PERSIST_MOON_START] = window.localStorage[PERSIST_MOON_START];
+		qData[PERSIST_MOON_END] = window.localStorage[PERSIST_MOON_END];
+		console.log('qData: ' + JSON.stringify(qData));
+		console.log('URL: ' + 'http://www.epicvortex.com/pebble/bwatch.html#' + encodeURIComponent(JSON.stringify(qData)));
+		Pebble.openURL('http://www.epicvortex.com/pebble/bwatch.html#' + encodeURIComponent(JSON.stringify(qData)));
 	}
 );
 
@@ -67,6 +76,14 @@ Pebble.addEventListener("webviewclosed",
 			}
 			window.localStorage.clear();
 			Pebble.sendAppMessage({"0": "reset" });
+			memoryArray[PERSIST_BOTTLE] = [];
+			memoryArray[PERSIST_DIAPER] = [];
+			memoryArray[PERSIST_MOON_START] = [];
+			memoryArray[PERSIST_MOON_END] = [];
+			window.localStorage[PERSIST_BOTTLE] = JSON.stringify(memoryArray[PERSIST_BOTTLE]);
+			window.localStorage[PERSIST_DIAPER] = JSON.stringify(memoryArray[PERSIST_DIAPER]);
+			window.localStorage[PERSIST_MOON_START] = JSON.stringify(memoryArray[PERSIST_MOON_START]);
+			window.localStorage[PERSIST_MOON_END] = JSON.stringify(memoryArray[PERSIST_MOON_END]);
 		}
 	}
 );
